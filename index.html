@@ -613,9 +613,16 @@
 
 <!-- ══════════════════════════════════ SCRIPT ═══════════════════════════════ -->
 <script>
-const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? 'http://localhost:8000'
-  : '';   // same origin when served from FastAPI
+// API URL resolution order:
+// 1. ?api=https://... in the URL (override for local dev)
+// 2. localStorage override (set via browser console: localStorage.setItem('finagentx_api','...')
+// 3. Render backend (production default)
+// 4. localhost:8000 (local dev fallback)
+const _urlParam = new URLSearchParams(window.location.search).get('api');
+const _lsAPI    = localStorage.getItem('finagentx_api');
+const _isLocal  = ['localhost','127.0.0.1'].includes(window.location.hostname);
+const API = _urlParam || _lsAPI ||
+  (_isLocal ? 'http://localhost:8000' : 'https://finagentx-api.onrender.com');
 
 const WALLET = '0xDemoWallet_FinAgentX_Hackathon';
 

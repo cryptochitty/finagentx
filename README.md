@@ -5,6 +5,32 @@
 [![Demo Ready](https://img.shields.io/badge/demo-ready-brightgreen)]()
 [![Simulation Mode](https://img.shields.io/badge/simulation-enabled-blue)]()
 [![HashKey Chain](https://img.shields.io/badge/chain-HashKey%20Chain-purple)]()
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/cryptochitty/finagentx)
+
+---
+
+## 🚀 Live Deployment
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| **Vercel** (Frontend) | https://finagentx.vercel.app | HTML dashboard UI |
+| **Render** (Backend)  | https://finagentx-api.onrender.com | FastAPI + AI agents |
+
+### Deploy in 5 minutes
+
+**Backend → Render**
+1. Go to [render.com](https://render.com) → New → Blueprint
+2. Connect `cryptochitty/finagentx` → Render auto-reads `render.yaml`
+3. Click **Apply** — deploys API + free PostgreSQL automatically
+
+**Frontend → Vercel**
+1. Go to [vercel.com](https://vercel.com) → New Project
+2. Import `cryptochitty/finagentx`
+3. Framework: **Other** · Root: `/` · Output: leave blank
+4. Add env var: `FINAGENTX_API_URL` = your Render API URL
+5. Deploy → open `https://your-app.vercel.app`
+
+> **Offline demo:** just open `index.html` in any browser — no server needed.
 
 ---
 

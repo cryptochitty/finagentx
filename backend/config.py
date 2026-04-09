@@ -29,11 +29,15 @@ PAYFI_ADDRESS      = os.getenv("PAYFI_ADDRESS", "")
 SIMULATION_MODE    = os.getenv("SIMULATION_MODE", "true").lower() == "true"
 
 # ─── Database ─────────────────────────────────────────────────────────────────
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./finagentx.db")
+# Render gives postgres:// but SQLAlchemy 2.x requires postgresql://
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./finagentx.db").replace(
+    "postgres://", "postgresql://", 1
+)
 
 # ─── App ──────────────────────────────────────────────────────────────────────
 SECRET_KEY    = os.getenv("SECRET_KEY", "dev-secret-change-in-prod")
-CORS_ORIGINS  = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+_cors_raw     = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+CORS_ORIGINS  = ["*"] if _cors_raw.strip() == "*" else _cors_raw.split(",")
 LOG_LEVEL     = os.getenv("LOG_LEVEL", "INFO")
 
 # ─── Risk limits ──────────────────────────────────────────────────────────────
