@@ -1,7 +1,6 @@
 services:
-  # ── FastAPI backend ────────────────────────────────────────────────────
   - type: web
-    name: finagentx-api
+    name: finagentx
     runtime: python
     region: oregon
     plan: free
@@ -12,15 +11,15 @@ services:
 
     envVars:
       - key: LLM_PROVIDER
-        value: mock                        # swap to gemini/openai in Render dashboard
+        value: mock
       - key: LLM_API_KEY
-        sync: false                        # set secret in Render dashboard
+        sync: false
       - key: USE_MOCK_DATA
         value: "true"
       - key: SIMULATION_MODE
         value: "true"
       - key: CORS_ORIGINS
-        value: "*"                         # tighten to vercel domain after first deploy
+        value: "*"
       - key: LOG_LEVEL
         value: INFO
       - key: MAX_TRADE_SIZE_PCT
@@ -32,7 +31,6 @@ services:
           name: finagentx-db
           property: connectionString
 
-  # ── PostgreSQL database ────────────────────────────────────────────────
 databases:
   - name: finagentx-db
     plan: free

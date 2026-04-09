@@ -5,12 +5,15 @@ All REST endpoints + SSE stream for live AI decision feed.
 import json
 import logging
 import asyncio
+import os
 from datetime import datetime
 from typing import List, Optional
+from pathlib import Path
 
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from backend.config import CORS_ORIGINS, LOG_LEVEL, SIMULATION_MODE
@@ -55,6 +58,27 @@ orchestrator = AgentOrchestrator()
 async def startup():
     init_db()
     logger.info("FinAgentX started. Simulation mode: %s", SIMULATION_MODE)
+
+
+# ─── Frontend – serve dashboard at root ───────────────────────────────────────
+# Looks for index.html in: public/ (repo root) → current dir → parent dirs
+
+def _find_index() -> Path | None:
+    candidates = [
+        Path(__file__).parent.parent / "public" / "index.html",
+        Path(__file__).parent.parent / "index.html",
+        Path("public/index.html"),
+        Path("index.html"),
+    ]
+    return next((p for p in candidates if p.exists()), None)
+
+
+@app.get("/", response_class=HTMLResponse)
+async def serve_dashboard():
+    html_path = _find_index()
+    if html_path:
+        return FileResponse(str(html_path), media_type="text/html")
+    return HTMLResponse("<h2>FinAgentX API is running. Dashboard not found.</h2>")
 
 
 # ─── Health ───────────────────────────────────────────────────────────────────
