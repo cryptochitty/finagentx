@@ -1,153 +1,185 @@
 """
 FinAgentX – Market Intelligence Agent
-Fetches price, volume, sentiment, RSI from Binance/CoinGecko.
-Falls back to realistic mock data if USE_MOCK_DATA=true or APIs fail.
+
+Data source priority (automatic fallback chain):
+  1. Binance public REST API (no key needed for price/ticker)
+  2. CoinGecko Demo API  (free, 30 req/min, no key needed for basic calls)
+  3. CoinGecko Pro API   (if COINGECKO_API_KEY is set)
+  4. Mock data           (if USE_MOCK_DATA=true OR all APIs fail)
+
+Binance public endpoints are unauthenticated – BINANCE_API_KEY is only needed
+for private endpoints (order placement etc.) which we don't use here.
 """
 import random
 import math
 import httpx
-from typing import List, Dict
+from typing import List, Optional
 from datetime import datetime
 
 from .base_agent import BaseAgent
-from backend.config import (
-    USE_MOCK_DATA, BINANCE_API_KEY, COINGECKO_API_KEY
-)
+from backend.config import USE_MOCK_DATA, COINGECKO_API_KEY
 from backend.models import MarketData
 
 
-# Symbols we track by default
 DEFAULT_SYMBOLS = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "HSKUSDT"]
+
+# CoinGecko symbol → coin-id map
+CG_ID_MAP = {
+    "BTCUSDT":  "bitcoin",
+    "ETHUSDT":  "ethereum",
+    "BNBUSDT":  "binancecoin",
+    "SOLUSDT":  "solana",
+    "HSKUSDT":  "hashkey-token",
+    "ADAUSDT":  "cardano",
+    "DOGEUSDT": "dogecoin",
+    "MATICUSDT":"matic-network",
+}
 
 
 class MarketIntelligenceAgent(BaseAgent):
     name = "MarketIntelligenceAgent"
 
-    # ── Public interface ──────────────────────────────────────────────────────
-
-    async def run(self, symbols: List[str] = None) -> List[MarketData]:
-        """
-        Fetch market data for given symbols.
-        Returns a list of MarketData objects.
-        Decision is logged into shared memory.
-        """
+    async def run(self, symbols: Optional[List[str]] = None) -> List[MarketData]:
         symbols = symbols or DEFAULT_SYMBOLS
 
         if USE_MOCK_DATA:
             data = self._mock_market_data(symbols)
         else:
-            data = await self._fetch_binance(symbols)
+            data = await self._fetch_binance_public(symbols)
             if not data:
                 data = await self._fetch_coingecko(symbols)
             if not data:
+                self.logger.warning("All market APIs failed – using mock data")
                 data = self._mock_market_data(symbols)
 
-        # Enrich with computed indicators
         for d in data:
-            d.sentiment = self._compute_sentiment(d)
-            d.trend     = self._compute_trend(d)
-            d.rsi       = self._compute_rsi(d)
+            d.sentiment = self._sentiment(d)
+            d.trend     = self._trend(d)
+            d.rsi       = self._approx_rsi(d)
 
-        # Log decision to shared memory
-        summary = [{"symbol": d.symbol, "price": d.price, "change": d.change_24h} for d in data]
-        self.log("market_scan", summary, f"Scanned {len(data)} symbols at {datetime.utcnow().isoformat()}")
-
+        self.log("market_scan",
+                 [{"symbol": d.symbol, "price": d.price, "change": d.change_24h} for d in data],
+                 f"Scanned {len(data)} symbols at {datetime.utcnow().isoformat()}")
         return data
 
-    # ── Data sources ──────────────────────────────────────────────────────────
+    # ── Binance public (no API key required) ────────────────────────────────
 
-    async def _fetch_binance(self, symbols: List[str]) -> List[MarketData]:
-        """Fetch 24-hour ticker stats from Binance public API."""
+    async def _fetch_binance_public(self, symbols: List[str]) -> List[MarketData]:
+        """
+        Binance 24-hr ticker – completely public, no auth needed.
+        Docs: https://binance-docs.github.io/apidocs/spot/en/#24hr-ticker-price-change-statistics
+        """
         results = []
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
-                for symbol in symbols:
-                    url = f"https://api.binance.com/api/v3/ticker/24hr?symbol={symbol}"
-                    resp = await client.get(url)
-                    if resp.status_code == 200:
-                        t = resp.json()
+            async with httpx.AsyncClient(timeout=8) as client:
+                for sym in symbols:
+                    if sym == "HSKUSDT":      # not listed on Binance
+                        continue
+                    r = await client.get(
+                        "https://api.binance.com/api/v3/ticker/24hr",
+                        params={"symbol": sym}
+                    )
+                    if r.status_code == 200:
+                        t = r.json()
                         results.append(MarketData(
-                            symbol=symbol,
-                            price=float(t["lastPrice"]),
-                            change_24h=float(t["priceChangePercent"]),
-                            volume_24h=float(t["quoteVolume"]),
+                            symbol    = sym,
+                            price     = float(t["lastPrice"]),
+                            change_24h= float(t["priceChangePercent"]),
+                            volume_24h= float(t["quoteVolume"]),
+                            market_cap= None,
                         ))
         except Exception as e:
-            self.logger.warning(f"Binance fetch failed: {e}")
+            self.logger.warning(f"Binance public fetch failed: {e}")
         return results
 
+    # ── CoinGecko (free Demo tier, no key needed) ────────────────────────────
+
     async def _fetch_coingecko(self, symbols: List[str]) -> List[MarketData]:
-        """Fallback: CoinGecko simple price API."""
-        coin_map = {
-            "BTCUSDT": "bitcoin", "ETHUSDT": "ethereum",
-            "BNBUSDT": "binancecoin", "SOLUSDT": "solana",
+        """
+        CoinGecko simple/price endpoint.
+        Free demo: 30 req/min, no key required.
+        Pro: set COINGECKO_API_KEY for higher limits.
+        """
+        ids = ",".join(
+            CG_ID_MAP.get(s, s.lower().replace("usdt", ""))
+            for s in symbols
+        )
+        params = {
+            "ids":               ids,
+            "vs_currencies":     "usd",
+            "include_24hr_change": "true",
+            "include_24hr_vol":    "true",
+            "include_market_cap":  "true",
         }
+        headers = {}
+        if COINGECKO_API_KEY:
+            # Pro API
+            base = "https://pro-api.coingecko.com/api/v3"
+            headers["x-cg-pro-api-key"] = COINGECKO_API_KEY
+        else:
+            # Free Demo API (no key, lower rate limit)
+            base = "https://api.coingecko.com/api/v3"
+
         results = []
         try:
-            ids = ",".join(coin_map.get(s, s.replace("USDT", "").lower()) for s in symbols)
-            url = f"https://api.coingecko.com/api/v3/simple/price?ids={ids}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true"
-            headers = {"x-cg-demo-api-key": COINGECKO_API_KEY} if COINGECKO_API_KEY else {}
             async with httpx.AsyncClient(timeout=10, headers=headers) as client:
-                resp = await client.get(url)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    for symbol in symbols:
-                        cid = coin_map.get(symbol, symbol.replace("USDT", "").lower())
-                        if cid in data:
-                            d = data[cid]
+                r = await client.get(f"{base}/simple/price", params=params)
+                if r.status_code == 200:
+                    raw = r.json()
+                    for sym in symbols:
+                        cid = CG_ID_MAP.get(sym, sym.lower().replace("usdt", ""))
+                        if cid in raw:
+                            d = raw[cid]
                             results.append(MarketData(
-                                symbol=symbol,
-                                price=d.get("usd", 0),
-                                change_24h=d.get("usd_24h_change", 0),
-                                volume_24h=d.get("usd_24h_vol", 0),
+                                symbol    = sym,
+                                price     = d.get("usd", 0),
+                                change_24h= d.get("usd_24h_change", 0),
+                                volume_24h= d.get("usd_24h_vol", 0),
+                                market_cap= d.get("usd_market_cap"),
                             ))
+                else:
+                    self.logger.warning(f"CoinGecko HTTP {r.status_code}")
         except Exception as e:
             self.logger.warning(f"CoinGecko fetch failed: {e}")
         return results
 
+    # ── Mock data (always works, no internet needed) ─────────────────────────
+
     def _mock_market_data(self, symbols: List[str]) -> List[MarketData]:
-        """
-        Realistic mock data with slight randomization around base prices.
-        Used in demo mode so the system always works without API keys.
-        """
         base_prices = {
             "BTCUSDT": 68_000, "ETHUSDT": 3_500, "BNBUSDT": 580,
-            "SOLUSDT": 175, "HSKUSDT": 0.85, "ADAUSDT": 0.45,
-            "DOGEUSDT": 0.18, "MATICUSDT": 0.92,
+            "SOLUSDT": 175,    "HSKUSDT": 0.85,  "ADAUSDT": 0.45,
+            "DOGEUSDT": 0.18,  "MATICUSDT": 0.92,
         }
         results = []
-        for symbol in symbols:
-            base   = base_prices.get(symbol, 1.0)
-            noise  = random.uniform(-0.04, 0.04)          # ±4% random movement
+        for sym in symbols:
+            base   = base_prices.get(sym, 1.0)
+            noise  = random.uniform(-0.04, 0.04)
             price  = round(base * (1 + noise), 4)
-            change = round(random.gauss(0.5, 3.0), 2)     # realistic daily change
-            volume = round(base * random.uniform(1_000, 50_000), 0)
+            change = round(random.gauss(0.5, 3.0), 2)
+            vol    = round(base * random.uniform(1_000, 50_000), 0)
             results.append(MarketData(
-                symbol=symbol,
-                price=price,
-                change_24h=change,
-                volume_24h=volume,
-                market_cap=round(price * random.uniform(1e7, 1e10), 0),
+                symbol    = sym,
+                price     = price,
+                change_24h= change,
+                volume_24h= vol,
+                market_cap= round(price * random.uniform(1e7, 1e10), 0),
             ))
         return results
 
-    # ── Computed indicators ───────────────────────────────────────────────────
+    # ── Indicators ────────────────────────────────────────────────────────────
 
-    def _compute_sentiment(self, d: MarketData) -> str:
+    def _sentiment(self, d: MarketData) -> str:
         if d.change_24h > 3:  return "bullish"
         if d.change_24h < -3: return "bearish"
         return "neutral"
 
-    def _compute_trend(self, d: MarketData) -> str:
-        if d.change_24h > 1:   return "up"
-        if d.change_24h < -1:  return "down"
+    def _trend(self, d: MarketData) -> str:
+        if d.change_24h > 1:  return "up"
+        if d.change_24h < -1: return "down"
         return "sideways"
 
-    def _compute_rsi(self, d: MarketData) -> float:
-        """
-        Simplified RSI approximation from 24h change (real impl needs OHLCV history).
-        For demo: map price change to RSI range 20-80.
-        """
-        change_clamped = max(-10, min(10, d.change_24h))
-        rsi = 50 + (change_clamped * 3)                   # 20–80 range
-        return round(rsi, 1)
+    def _approx_rsi(self, d: MarketData) -> float:
+        """RSI approximation from 24h change (50 ± 30 range)."""
+        c = max(-10, min(10, d.change_24h))
+        return round(50 + c * 3, 1)

@@ -39,10 +39,17 @@ class LLMClient:
     # ── Provider implementations ──────────────────────────────────────────────
 
     def _gemini(self, system: str, user: str) -> str:
+        """
+        Google Gemini via google-generativeai SDK.
+        Free tier: gemini-1.5-flash → 15 req/min, 1M tokens/day (no billing needed).
+        Get key: https://aistudio.google.com/app/apikey
+        """
         try:
             import google.generativeai as genai
             genai.configure(api_key=LLM_API_KEY)
-            m = genai.GenerativeModel(self.model, system_instruction=system)
+            # gemini-1.5-flash is free-tier friendly; fall back if model unavailable
+            model_name = self.model if self.model else "gemini-1.5-flash"
+            m = genai.GenerativeModel(model_name, system_instruction=system)
             resp = m.generate_content(user)
             return resp.text
         except Exception as e:
