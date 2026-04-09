@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FinAgentX – Autonomous On-Chain Financial Brain</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <style>
+    /* ── Reset & base ─────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0a0f1e;
+      --card:     #111827;
+      --card2:    #1a2235;
+      --border:   #1f2d45;
+      --brand:    #6366f1;
+      --brand2:   #818cf8;
+      --green:    #10b981;
+      --red:      #ef4444;
+      --yellow:   #f59e0b;
+      --cyan:     #22d3ee;
+      --pink:     #ec4899;
+      --text:     #f1f5f9;
+      --muted:    #94a3b8;
+      --dim:      #475569;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Scrollbar ──────────────────────────────────────────────────────── */
+    ::-webkit-scrollbar       { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* ── Utilities ──────────────────────────────────────────────────────── */
+    .flex  { display: flex; }
+    .grid  { display: grid; }
+    .col   { flex-direction: column; }
+    .gap2  { gap: 8px; }
+    .gap3  { gap: 12px; }
+    .gap4  { gap: 16px; }
+    .sb    { justify-content: space-between; }
+    .ac    { align-items: center; }
+    .bold  { font-weight: 600; }
+    .mono  { font-family: 'Courier New', monospace; }
+    .trunc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── Card ───────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .card-title .icon { font-size: 16px; }
+
+    /* ── Badges ─────────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    }
+    .badge-green  { background: rgba(16,185,129,.15); color: var(--green); }
+    .badge-red    { background: rgba(239,68,68,.15);  color: var(--red); }
+    .badge-yellow { background: rgba(245,158,11,.15); color: var(--yellow); }
+    .badge-brand  { background: rgba(99,102,241,.15); color: var(--brand2); }
+    .badge-cyan   { background: rgba(34,211,238,.15); color: var(--cyan); }
+
+    /* ── Buttons ────────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      border: none; cursor: pointer; transition: all .18s;
+    }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-primary { background: var(--brand); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #4f46e5; transform: translateY(-1px); }
+    .btn-ghost {
+      background: transparent; color: var(--brand2);
+      border: 1px solid var(--brand);
+    }
+    .btn-ghost:hover:not(:disabled) { background: rgba(99,102,241,.12); }
+    .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 6px; }
+
+    /* ── Toggle ─────────────────────────────────────────────────────────── */
+    .toggle-wrap { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .toggle {
+      position: relative; width: 44px; height: 24px;
+      background: var(--border); border-radius: 12px; transition: background .2s;
+    }
+    .toggle.on { background: var(--brand); }
+    .toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 18px; height: 18px; border-radius: 50%; background: #fff;
+      transition: transform .2s;
+    }
+    .toggle.on::after { transform: translateX(20px); }
+    .toggle-label { font-size: 13px; font-weight: 600; color: var(--muted); }
+    .toggle-label.on { color: var(--brand2); }
+
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,15,30,.92); backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+    }
+    .header-inner {
+      max-width: 1400px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 60px; gap: 16px;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg,#6366f1,#a855f7);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .logo-text { font-size: 18px; font-weight: 700; }
+    .logo-sub  { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .wallet-chip {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 5px 12px; font-size: 12px;
+    }
+    .wallet-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--green); box-shadow: 0 0 6px var(--green);
+    }
+
+    /* Status bar */
+    #statusBar {
+      background: rgba(16,185,129,.08); border-top: 1px solid rgba(16,185,129,.15);
+      padding: 5px 24px; text-align: center; font-size: 11px; color: var(--green);
+      display: none;
+    }
+
+    /* ── Market ticker ──────────────────────────────────────────────────── */
+    .ticker-strip {
+      display: flex; gap: 8px; overflow-x: auto; padding: 12px 24px;
+      border-bottom: 1px solid var(--border);
+      scrollbar-width: none;
+    }
+    .ticker-strip::-webkit-scrollbar { display: none; }
+    .ticker-item {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 8px 14px; flex-shrink: 0;
+      transition: border-color .2s;
+    }
+    .ticker-item:hover { border-color: var(--brand); }
+    .ticker-sym  { font-weight: 700; font-size: 12px; color: var(--text); }
+    .ticker-price { font-size: 13px; font-weight: 600; font-family: monospace; }
+    .ticker-chg  { font-size: 11px; font-weight: 600; }
+    .ticker-sent { font-size: 10px; padding: 1px 6px; border-radius: 8px; }
+    .up   { color: var(--green); }
+    .down { color: var(--red); }
+    .flat { color: var(--muted); }
+
+    /* ── Main grid ──────────────────────────────────────────────────────── */
+    .main {
+      max-width: 1400px; margin: 0 auto;
+      display: grid;
+      grid-template-columns: 300px 1fr 340px;
+      grid-template-rows: auto;
+      gap: 16px;
+      padding: 16px 24px 32px;
+    }
+
+    @media (max-width: 1100px) {
+      .main { grid-template-columns: 1fr 1fr; }
+      .col-right { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    }
+    @media (max-width: 700px) {
+      .main { grid-template-columns: 1fr; padding: 12px; gap: 12px; }
+      .col-right { grid-template-columns: 1fr; }
+    }
+
+    /* ── Portfolio panel ────────────────────────────────────────────────── */
+    .portfolio-value { text-align: center; padding: 12px 0 8px; }
+    .portfolio-value .big { font-size: 32px; font-weight: 700; line-height: 1; }
+    .portfolio-value .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .portfolio-value .cash { font-size: 14px; color: var(--cyan); margin-top: 6px; font-weight: 600; }
+
+    /* Donut chart wrapper */
+    .donut-wrap { position: relative; margin: 0 auto; width: 180px; height: 180px; }
+    .donut-center {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      text-align: center; pointer-events: none;
+    }
+    .donut-center .dc-val { font-size: 18px; font-weight: 700; }
+    .donut-center .dc-lbl { font-size: 10px; color: var(--muted); }
+
+    /* Holdings table */
+    .holdings-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+    .h-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    /* Risk meter */
+    .risk-bar-bg {
+      width: 100%; height: 8px; border-radius: 4px;
+      background: var(--border); overflow: hidden; margin-top: 6px;
+    }
+    .risk-bar-fill {
+      height: 100%; border-radius: 4px; transition: width .6s ease;
+    }
+
+    /* Deposit row */
+    .deposit-row { display: flex; gap: 8px; margin-top: 4px; }
+    .inp {
+      flex: 1; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 7px 11px; color: var(--text); font-size: 13px;
+      outline: none; transition: border-color .18s;
+    }
+    .inp:focus { border-color: var(--brand); }
+
+    /* Signals */
+    .signal-row {
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--bg); border-radius: 8px; padding: 8px 10px; gap: 8px;
+    }
+    .signal-action { font-weight: 700; font-size: 12px; }
+
+    /* ── AI Decision Feed ───────────────────────────────────────────────── */
+    .pipeline-strip {
+      display: flex; align-items: center; gap: 4px; overflow-x: auto;
+      padding-bottom: 10px; margin-bottom: 2px; scrollbar-width: none;
+    }
+    .pipeline-strip::-webkit-scrollbar { display: none; }
+    .pip-step {
+      display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+    }
+    .pip-node {
+      font-size: 11px; padding: 3px 10px; border-radius: 20px;
+      background: var(--bg); border: 1px solid var(--border); color: var(--dim);
+      transition: all .3s;
+    }
+    .pip-node.active { border-color: var(--brand); color: var(--brand2); background: rgba(99,102,241,.1); }
+    .pip-node.done   { border-color: var(--green); color: var(--green); background: rgba(16,185,129,.08); }
+    .pip-arrow { color: var(--dim); font-size: 12px; }
+
+    #feed {
+      height: 340px; overflow-y: auto; background: var(--bg);
+      border-radius: 10px; padding: 10px 12px;
+      font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.6;
+    }
+    .feed-line {
+      display: flex; gap: 8px; align-items: flex-start;
+      padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,.03);
+      animation: fadeSlide .25s ease;
+    }
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .feed-emoji { flex-shrink: 0; width: 18px; }
+    .feed-agent { font-weight: 700; flex-shrink: 0; }
+    .feed-msg   { color: #94a3b8; word-break: break-word; }
+
+    /* Sim quick stats */
+    .stat-grid {
+      display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-top: 10px;
+    }
+    .stat-box {
+      background: var(--bg); border-radius: 8px; padding: 8px;
+      text-align: center;
+    }
+    .stat-box .sv { font-size: 15px; font-weight: 700; }
+    .stat-box .sl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Simulation panel ───────────────────────────────────────────────── */
+    select.inp { cursor: pointer; }
+    .chart-wrap { position: relative; height: 140px; margin-top: 10px; }
+    .sim-metrics {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px;
+    }
+    .sm-box {
+      background: var(--bg); border-radius: 8px; padding: 8px 10px;
+    }
+    .sm-box .smv { font-weight: 700; font-size: 14px; }
+    .sm-box .sml { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Payment panel ──────────────────────────────────────────────────── */
+    .pay-item {
+      display: flex; gap: 8px; align-items: flex-start;
+      background: var(--bg); border-radius: 8px; padding: 9px 10px;
+    }
+    .pay-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .pay-addr { font-size: 11px; font-family: monospace; color: var(--text); }
+    .pay-meta { font-size: 11px; color: var(--muted); }
+    .pay-status { font-size: 10px; margin-left: auto; flex-shrink: 0; }
+    .pay-form { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; }
+    .pay-row2 { display: grid; grid-template-columns: 1fr 80px; gap: 7px; }
+
+    /* ── ZK badge ───────────────────────────────────────────────────────── */
+    #zkBadge {
+      background: rgba(16,185,129,.07); border: 1px solid rgba(16,185,129,.25);
+      border-radius: 10px; padding: 12px; margin-top: 8px; display: none;
+    }
+    .zk-title { font-size: 12px; font-weight: 700; color: var(--green); margin-bottom: 6px; }
+    .zk-proof { font-size: 10px; font-family: monospace; color: var(--muted); word-break: break-all; }
+    .zk-claims { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .zk-claim {
+      font-size: 10px; background: rgba(16,185,129,.15);
+      color: var(--green); padding: 2px 7px; border-radius: 8px;
+    }
+
+    /* ── Footer ─────────────────────────────────────────────────────────── */
+    footer {
+      text-align: center; padding: 20px; font-size: 11px;
+      color: var(--dim); border-top: 1px solid var(--border);
+    }
+
+    /* ── Spinner ────────────────────────────────────────────────────────── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,.2); border-top-color: #fff;
+      border-radius: 50%; animation: spin .7s linear infinite;
+    }
+
+    /* ── Glowing pulse for autonomous ──────────────────────────────────── */
+    @keyframes glow {
+      0%,100% { box-shadow: 0 0 6px rgba(99,102,241,.4); }
+      50%      { box-shadow: 0 0 18px rgba(99,102,241,.8); }
+    }
+    .glow { animation: glow 2s ease-in-out infinite; }
+
+    /* ── Number counter animation ───────────────────────────────────────── */
+    .counter-animate { transition: all .4s ease; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════ HEADER ═════════════════════════════ -->
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-icon">🧠</div>
+      <div>
+        <div class="logo-text">FinAgentX</div>
+        <div class="logo-sub">Autonomous On-Chain Financial Brain</div>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="wallet-chip">
+        <div class="wallet-dot"></div>
+        <span class="mono" style="font-size:11px" id="walletLabel">0xDemo...AgentX</span>
+        <span id="zkIcon" title="Click to verify ZK identity" onclick="verifyZK()"
+              style="cursor:pointer;font-size:12px" class="badge badge-green">🛡 ZK</span>
+      </div>
+
+      <!-- Autonomous toggle -->
+      <div class="toggle-wrap" onclick="toggleAutonomous()">
+        <div class="toggle" id="autoToggle"></div>
+        <span class="toggle-label" id="autoLabel">Manual Mode</span>
+      </div>
+
+      <button class="btn btn-primary" id="runBtn" onclick="runCycle()">
+        ⚡ Run AI Cycle
+      </button>
+    </div>
+  </div>
+</header>
+<div id="statusBar"></div>
+
+<!-- ══════════════════════════════════ TICKER ═══════════════════════════════ -->
+<div class="ticker-strip" id="ticker">
+  <!-- populated by JS -->
+  <div style="color:var(--muted);font-size:12px;padding:8px">Loading market data...</div>
+</div>
+
+<!-- ══════════════════════════════════ MAIN ═════════════════════════════════ -->
+<div class="main">
+
+  <!-- ── LEFT: Portfolio ───────────────────────────────────────────────── -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+
+    <div class="card">
+      <div class="card-title"><span class="icon">💼</span> Portfolio</div>
+
+      <div class="portfolio-value">
+        <div class="big" id="totalValue">$10,000.00</div>
+        <div class="sub">Total Value (USDT)</div>
+        <div class="cash" id="cashBalance">💵 Cash: $10,000.00</div>
+      </div>
+
+      <!-- Donut chart -->
+      <div class="donut-wrap">
+        <canvas id="donutChart"></canvas>
+        <div class="donut-center">
+          <div class="dc-val" id="donutCenter">—</div>
+          <div class="dc-lbl">Holdings</div>
+        </div>
+      </div>
+
+      <!-- Holdings list -->
+      <div id="holdingsList" style="margin-top:10px"></div>
+
+      <!-- Risk score -->
+      <div style="margin-top:14px">
+        <div class="flex sb ac" style="margin-bottom:4px">
+          <span style="font-size:12px;color:var(--muted)">Risk Score</span>
+          <span id="riskBadge" class="badge badge-green">0/100 • Low</span>
+        </div>
+        <div class="risk-bar-bg">
+          <div class="risk-bar-fill" id="riskBar" style="width:0%;background:var(--green)"></div>
+        </div>
+        <div id="riskFlags" style="margin-top:6px;font-size:11px;color:var(--yellow)"></div>
+      </div>
+
+      <!-- Signals -->
+      <div id="signalsWrap" style="margin-top:14px;display:none">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">
+          Latest Signals
+        </div>
+        <div id="signalsList" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+
+      <!-- ZK Badge -->
+      <div id="zkBadge">
+        <div class="zk-title">🔐 ZK Identity Verified</div>
+        <div class="zk-proof" id="zkProof"></div>
+        <div class="zk-claims" id="zkClaims"></div>
+      </div>
+
+      <!-- Deposit -->
+      <div class="deposit-row" style="margin-top:14px">
+        <input type="number" class="inp" id="depositAmt" value="1000" placeholder="USDT amount" />
+        <button class="btn btn-ghost btn-sm" onclick="doDeposit()">Deposit</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── CENTER: AI Decision Feed ──────────────────────────────────────── -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+
+    <div class="card" style="flex:1">
+      <div class="card-title flex sb ac" style="margin-bottom:10px">
+        <span><span class="icon">🤖</span> AI Decision Feed</span>
+        <span id="feedStatus" style="font-size:11px;color:var(--muted)">Idle</span>
+      </div>
+
+      <!-- Pipeline steps -->
+      <div class="pipeline-strip" id="pipeline">
+        <div class="pip-step"><div class="pip-node" id="pip-0">📡 Market</div></div>
+        <div class="pip-arrow">→</div>
+        <div class="pip-step"><div class="pip-node" id="pip-1">🧠 Strategy</div></div>
+        <div class="pip-arrow">→</div>
+        <div class="pip-step"><div class="pip-node" id="pip-2">🔬 Simulate</div></div>
+        <div class="pip-arrow">→</div>
+        <div class="pip-step"><div class="pip-node" id="pip-3">🛡 Risk</div></div>
+        <div class="pip-arrow">→</div>
+        <div class="pip-step"><div class="pip-node" id="pip-4">⚡ Execute</div></div>
+        <div class="pip-arrow">→</div>
+        <div class="pip-step"><div class="pip-node" id="pip-5">💬 Explain</div></div>
+      </div>
+
+      <div id="feed">
+        <div style="color:var(--dim);padding:60px 0;text-align:center">
+          Click <strong style="color:var(--brand2)">Run AI Cycle</strong> to start the autonomous decision pipeline
+        </div>
+      </div>
+
+      <!-- Quick sim stats -->
+      <div class="stat-grid" id="statGrid" style="display:none">
+        <div class="stat-box">
+          <div class="sv" id="sROI" style="color:var(--green)">—</div>
+          <div class="sl">ROI</div>
+        </div>
+        <div class="stat-box">
+          <div class="sv" id="sDraw" style="color:var(--yellow)">—</div>
+          <div class="sl">Drawdown</div>
+        </div>
+        <div class="stat-box">
+          <div class="sv" id="sWin" style="color:var(--cyan)">—</div>
+          <div class="sl">Win Rate</div>
+        </div>
+        <div class="stat-box">
+          <div class="sv" id="sSharpe" style="color:var(--brand2)">—</div>
+          <div class="sl">Sharpe</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── RIGHT column ──────────────────────────────────────────────────── -->
+  <div class="col-right" style="display:flex;flex-direction:column;gap:16px">
+
+    <!-- Backtest Simulator -->
+    <div class="card">
+      <div class="card-title"><span class="icon">🔬</span> Backtest Simulator</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Strategy</div>
+          <select class="inp" id="simStrategy" style="width:100%">
+            <option value="momentum">Momentum</option>
+            <option value="mean_reversion">Mean Reversion</option>
+            <option value="default">Default</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Symbol</div>
+          <select class="inp" id="simSymbol" style="width:100%">
+            <option>BTCUSDT</option><option>ETHUSDT</option>
+            <option>BNBUSDT</option><option>SOLUSDT</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Days</div>
+          <input type="number" class="inp" id="simDays" value="30" min="7" max="365" style="width:100%" />
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Capital ($)</div>
+          <input type="number" class="inp" id="simCapital" value="10000" style="width:100%" />
+        </div>
+      </div>
+
+      <button class="btn" style="width:100%;margin-top:10px;background:rgba(245,158,11,.15);
+              color:var(--yellow);border:1px solid rgba(245,158,11,.3)"
+              id="simBtn" onclick="runSim()">
+        🔬 Run Backtest
+      </button>
+
+      <!-- Equity chart -->
+      <div class="chart-wrap" id="simChartWrap" style="display:none">
+        <canvas id="equityChart"></canvas>
+      </div>
+
+      <div class="sim-metrics" id="simMetrics" style="display:none">
+        <div class="sm-box"><div class="smv" id="mROI">—</div><div class="sml">ROI</div></div>
+        <div class="sm-box"><div class="smv" id="mDraw">—</div><div class="sml">Max Drawdown</div></div>
+        <div class="sm-box"><div class="smv" id="mWin">—</div><div class="sml">Win Rate</div></div>
+        <div class="sm-box"><div class="smv" id="mSharpe">—</div><div class="sml">Sharpe</div></div>
+        <div class="sm-box"><div class="smv" id="mTrades">—</div><div class="sml">Total Trades</div></div>
+        <div class="sm-box"><div class="smv" id="mMode">—</div><div class="sml">Mode</div></div>
+      </div>
+
+      <div id="simExplain" style="margin-top:10px;font-size:11px;color:var(--muted);
+           background:var(--bg);border-radius:8px;padding:10px;display:none;line-height:1.6"></div>
+    </div>
+
+    <!-- PayFi Panel -->
+    <div class="card">
+      <div class="card-title flex sb ac" style="margin-bottom:10px">
+        <span><span class="icon">💳</span> PayFi Automation</span>
+        <button class="btn btn-ghost btn-sm" onclick="togglePayForm()">+ Add</button>
+      </div>
+
+      <!-- Create form -->
+      <div class="pay-form" id="payForm" style="display:none">
+        <input class="inp" id="payRecipient" placeholder="Recipient address (0x...)" />
+        <div class="pay-row2">
+          <input type="number" class="inp" id="payAmount" value="100" placeholder="Amount" />
+          <select class="inp" id="payToken">
+            <option>USDT</option><option>USDC</option><option>ETH</option>
+          </select>
+        </div>
+        <select class="inp" id="paySchedule">
+          <option value="once">One-time</option>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly" selected>Monthly</option>
+        </select>
+        <button class="btn" style="background:rgba(236,72,153,.15);color:var(--pink);
+                border:1px solid rgba(236,72,153,.3)" onclick="schedulePayment()">
+          💳 Schedule Payment
+        </button>
+      </div>
+
+      <div id="paymentList" style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+        <div style="color:var(--dim);text-align:center;padding:20px;font-size:12px">
+          No scheduled payments. Click + Add to create one.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ FOOTER ═══════════════════════════════ -->
+<footer>
+  FinAgentX · HashKey Chain (EVM) · All transactions are simulated in demo mode ·
+  Built for hackathon 2025 🏆
+</footer>
+
+<!-- ══════════════════════════════════ SCRIPT ═══════════════════════════════ -->
+<script>
+// API URL resolution order:
+// 1. ?api=https://... in the URL (override for local dev)
+// 2. localStorage override (set via browser console: localStorage.setItem('finagentx_api','...')
+// 3. Render backend (production default)
+// 4. localhost:8000 (local dev fallback)
+const _urlParam = new URLSearchParams(window.location.search).get('api');
+const _lsAPI    = localStorage.getItem('finagentx_api');
+const _isLocal  = ['localhost','127.0.0.1'].includes(window.location.hostname);
+const API = _urlParam || _lsAPI ||
+  (_isLocal ? 'http://localhost:8000' : 'https://finagentx-api.onrender.com');
+
+const WALLET = '0xDemoWallet_FinAgentX_Hackathon';
+
+// ── State ──────────────────────────────────────────────────────────────────
+let autonomous    = false;
+let equityChart   = null;
+let donutChart    = null;
+let isRunning     = false;
+const payments    = [];
+
+const DONUT_COLORS = ['#6366f1','#22d3ee','#f59e0b','#10b981','#ec4899','#8b5cf6','#f97316'];
+
+// ── Agent meta ─────────────────────────────────────────────────────────────
+const AGENT_META = {
+  MarketIntelligenceAgent: { emoji:'📡', color:'#22d3ee', pip:0 },
+  StrategyAgent:           { emoji:'🧠', color:'#a855f7', pip:1 },
+  SimulationAgent:         { emoji:'🔬', color:'#f59e0b', pip:2 },
+  RiskAgent:               { emoji:'🛡', color:'#f97316', pip:3 },
+  ExecutionAgent:          { emoji:'⚡', color:'#10b981', pip:4 },
+  PayFiAgent:              { emoji:'💳', color:'#ec4899', pip:4 },
+  ExplainerAgent:          { emoji:'💬', color:'#6366f1', pip:5 },
+};
+
+// ── Donut chart init ───────────────────────────────────────────────────────
+function initDonut() {
+  const ctx = document.getElementById('donutChart').getContext('2d');
+  donutChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Cash'],
+      datasets: [{ data: [10000], backgroundColor: DONUT_COLORS, borderWidth: 0, hoverOffset: 4 }]
+    },
+    options: {
+      cutout: '68%',
+      plugins: { legend: { display: false }, tooltip: { callbacks: {
+        label: ctx => ` ${ctx.label}: $${ctx.raw.toLocaleString()}`
+      }}},
+      animation: { animateRotate: true, duration: 600 }
+    }
+  });
+}
+initDonut();
+
+// ── Update portfolio UI ────────────────────────────────────────────────────
+function updatePortfolioUI(p) {
+  document.getElementById('totalValue').textContent = '$' + p.total_value.toLocaleString(undefined,{maximumFractionDigits:2});
+  document.getElementById('cashBalance').textContent = '💵 Cash: $' + p.cash_balance.toLocaleString(undefined,{maximumFractionDigits:2});
+  document.getElementById('donutCenter').textContent = Object.keys(p.holdings||{}).length || '—';
+
+  // Donut data
+  const holdings = p.holdings || {};
+  const labels   = Object.keys(holdings).length ? [...Object.keys(holdings), 'Cash'] : ['Cash'];
+  const data     = Object.keys(holdings).length ? [...Object.values(holdings).map(v=>Math.abs(v)), p.cash_balance] : [p.total_value];
+  donutChart.data.labels   = labels;
+  donutChart.data.datasets[0].data = data;
+  donutChart.update();
+
+  // Holdings list
+  const list = document.getElementById('holdingsList');
+  list.innerHTML = '';
+  Object.entries(holdings).forEach(([asset, amount], i) => {
+    const row = document.createElement('div');
+    row.className = 'holdings-row';
+    row.innerHTML = `<div class="flex ac gap2"><div class="h-dot" style="background:${DONUT_COLORS[i%DONUT_COLORS.length]}"></div><span>${asset}</span></div><span style="color:var(--muted);font-size:12px">${parseFloat(amount).toFixed(4)}</span>`;
+    list.appendChild(row);
+  });
+}
+
+// ── Risk UI update ─────────────────────────────────────────────────────────
+function updateRiskUI(risk) {
+  if (!risk) return;
+  const badge = document.getElementById('riskBadge');
+  const bar   = document.getElementById('riskBar');
+  const flags = document.getElementById('riskFlags');
+  const level = risk.level || 'low';
+  const score = risk.score || 0;
+  const colorMap = { low:'var(--green)', medium:'var(--yellow)', high:'var(--yellow)', extreme:'var(--red)' };
+  const classMap = { low:'badge-green', medium:'badge-yellow', high:'badge-yellow', extreme:'badge-red' };
+  badge.className = 'badge ' + (classMap[level]||'badge-green');
+  badge.textContent = `${score}/100 • ${level.charAt(0).toUpperCase()+level.slice(1)}`;
+  bar.style.width = score + '%';
+  bar.style.background = colorMap[level]||'var(--green)';
+  flags.textContent = (risk.flags||[]).slice(0,2).map(f=>'⚠ '+f).join(' · ');
+}
+
+// ── Pipeline progress ──────────────────────────────────────────────────────
+function setPipeline(activeIdx, doneIdx) {
+  for (let i = 0; i <= 5; i++) {
+    const el = document.getElementById('pip-' + i);
+    if (!el) continue;
+    el.classList.remove('active','done');
+    if (i < doneIdx)      el.classList.add('done');
+    else if (i === activeIdx) el.classList.add('active');
+  }
+}
+function resetPipeline() {
+  for (let i = 0; i <= 5; i++) {
+    const el = document.getElementById('pip-' + i);
+    if (el) el.classList.remove('active','done');
+  }
+}
+
+// ── Feed helpers ──────────────────────────────────────────────────────────
+function feedLine(emoji, agentName, msg, color) {
+  const feed = document.getElementById('feed');
+  const empty = feed.querySelector('[style*="text-align:center"]');
+  if (empty) empty.remove();
+
+  const line = document.createElement('div');
+  line.className = 'feed-line';
+  line.innerHTML = `
+    <span class="feed-emoji">${emoji}</span>
+    <span class="feed-agent" style="color:${color||'var(--brand2)'}">[${(agentName||'').replace('Agent','')}]</span>
+    <span class="feed-msg">${escHtml(msg)}</span>
+  `;
+  feed.appendChild(line);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function feedSeparator(label) {
+  const feed = document.getElementById('feed');
+  const sep = document.createElement('div');
+  sep.style.cssText = 'color:var(--dim);font-size:10px;padding:4px 0 2px;border-bottom:1px solid var(--border);margin:2px 0;text-align:center;';
+  sep.textContent = '── ' + label + ' ──';
+  feed.appendChild(sep);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Fetch portfolio ────────────────────────────────────────────────────────
+async function fetchPortfolio() {
+  try {
+    const r = await fetch(`${API}/portfolio/${WALLET}`);
+    if (r.ok) updatePortfolioUI(await r.json());
+  } catch(e) {
+    // API offline – show demo data
+    updatePortfolioUI({ wallet:WALLET, total_value:10000, cash_balance:10000, holdings:{}, risk_score:0 });
+  }
+}
+
+// ── Fetch market ──────────────────────────────────────────────────────────
+async function fetchMarket() {
+  let data = [];
+  try {
+    const r = await fetch(`${API}/market?symbols=BTCUSDT,ETHUSDT,BNBUSDT,SOLUSDT,HSKUSDT`);
+    if (r.ok) data = await r.json();
+  } catch(e) {
+    // Mock data for offline demo
+    data = [
+      {symbol:'BTCUSDT', price:68234, change_24h:2.41, rsi:57, sentiment:'bullish', trend:'up'},
+      {symbol:'ETHUSDT', price:3512,  change_24h:-1.2,  rsi:44, sentiment:'neutral', trend:'down'},
+      {symbol:'BNBUSDT', price:579,   change_24h:0.8,   rsi:51, sentiment:'neutral', trend:'sideways'},
+      {symbol:'SOLUSDT', price:176,   change_24h:4.1,   rsi:63, sentiment:'bullish', trend:'up'},
+      {symbol:'HSKUSDT', price:0.87,  change_24h:-0.5,  rsi:48, sentiment:'neutral', trend:'sideways'},
+    ];
+  }
+  renderTicker(data);
+}
+
+function renderTicker(data) {
+  const strip = document.getElementById('ticker');
+  strip.innerHTML = '';
+  data.forEach(d => {
+    const up   = d.change_24h > 0;
+    const down = d.change_24h < 0;
+    const sentColor = d.sentiment==='bullish'?'rgba(16,185,129,.15);color:var(--green)'
+                    : d.sentiment==='bearish'?'rgba(239,68,68,.15);color:var(--red)'
+                    : 'rgba(148,163,184,.1);color:var(--muted)';
+    strip.innerHTML += `
+      <div class="ticker-item">
+        <span class="ticker-sym">${d.symbol.replace('USDT','')}</span>
+        <span class="ticker-price">$${Number(d.price).toLocaleString(undefined,{maximumFractionDigits:4})}</span>
+        <span class="ticker-chg ${up?'up':down?'down':'flat'}">${up?'▲':'▼'} ${Math.abs(d.change_24h).toFixed(2)}%</span>
+        ${d.rsi ? `<span style="font-size:10px;color:var(--dim)">RSI ${d.rsi}</span>` : ''}
+        <span class="ticker-sent" style="background:${sentColor}">${d.sentiment}</span>
+      </div>`;
+  });
+}
+
+// ── Run autonomous cycle ───────────────────────────────────────────────────
+async function runCycle() {
+  if (isRunning) return;
+  isRunning = true;
+
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Running...';
+  if (autonomous) btn.classList.add('glow');
+
+  document.getElementById('feedStatus').textContent = 'Running…';
+  resetPipeline();
+
+  feedSeparator(`Cycle ${new Date().toLocaleTimeString()} · ${autonomous?'AUTONOMOUS':'MANUAL'}`);
+
+  let result = null;
+  try {
+    const r = await fetch(`${API}/cycle/${WALLET}?autonomous=${autonomous}`, { method:'POST' });
+    if (r.ok) result = await r.json();
+  } catch(e) {
+    // Offline demo: generate mock result
+    result = buildMockResult();
+  }
+
+  if (!result) {
+    feedLine('❌','System','API unreachable – using mock data','var(--red)');
+    result = buildMockResult();
+  }
+
+  await animateCycle(result);
+  await fetchPortfolio();
+  fetchMarket();
+
+  btn.disabled = false;
+  btn.innerHTML = '⚡ Run AI Cycle';
+  btn.classList.remove('glow');
+  isRunning = false;
+  document.getElementById('feedStatus').textContent = `Done · ${result.decisions?.length||0} decisions`;
+
+  showStatusBar(result);
+}
+
+// ── Animate cycle decisions ────────────────────────────────────────────────
+async function animateCycle(result) {
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+
+  // Step 0: Market
+  setPipeline(0, 0);
+  feedLine('📡','MarketIntelligenceAgent',
+    `Scanned ${result.market_data?.length||0} assets: ${(result.market_data||[]).slice(0,3).map(d=>`${d.symbol.replace('USDT','')} $${Number(d.price).toLocaleString()}`).join(', ')}`,
+    '#22d3ee');
+  await delay(400);
+
+  // Step 1: Strategy
+  setPipeline(1, 1);
+  const signals = result.signals || [];
+  feedLine('🧠','StrategyAgent',
+    signals.length
+      ? `Generated ${signals.length} signal(s): ${signals.map(s=>`${s.action.toUpperCase()} ${s.symbol.replace('USDT','')} (${(s.confidence*100).toFixed(0)}%)`).join(', ')}`
+      : 'No actionable signals – market conditions neutral',
+    '#a855f7');
+
+  // Show signals in portfolio panel
+  if (signals.length) {
+    document.getElementById('signalsWrap').style.display = 'block';
+    const sl = document.getElementById('signalsList');
+    sl.innerHTML = '';
+    signals.forEach(s => {
+      const div = document.createElement('div');
+      div.className = 'signal-row';
+      div.innerHTML = `
+        <span class="signal-action" style="color:${s.action==='buy'?'var(--green)':'var(--red)'}">
+          ${s.action==='buy'?'▲':'▼'} ${s.action.toUpperCase()} ${s.symbol.replace('USDT','')}
+        </span>
+        <span class="badge ${s.action==='buy'?'badge-green':'badge-red'}">${(s.confidence*100).toFixed(0)}% conf</span>
+        <span style="font-size:11px;color:var(--muted)">${s.position_size}% pos</span>
+      `;
+      sl.appendChild(div);
+    });
+  }
+  await delay(400);
+
+  // Step 2: Simulation
+  setPipeline(2, 2);
+  if (result.simulation) {
+    const sim = result.simulation;
+    feedLine('🔬','SimulationAgent',
+      `Backtest: ROI ${sim.roi_pct>0?'+':''}${sim.roi_pct?.toFixed(1)}% · drawdown ${sim.max_drawdown?.toFixed(1)}% · Sharpe ${sim.sharpe_ratio?.toFixed(2)}`,
+      '#f59e0b');
+    document.getElementById('statGrid').style.display = 'grid';
+    document.getElementById('sROI').textContent    = (sim.roi_pct>0?'+':'')+sim.roi_pct?.toFixed(1)+'%';
+    document.getElementById('sROI').style.color    = sim.roi_pct>0?'var(--green)':'var(--red)';
+    document.getElementById('sDraw').textContent   = sim.max_drawdown?.toFixed(1)+'%';
+    document.getElementById('sWin').textContent    = sim.win_rate?.toFixed(0)+'%';
+    document.getElementById('sSharpe').textContent = sim.sharpe_ratio?.toFixed(2);
+  } else {
+    feedLine('🔬','SimulationAgent','No signals to simulate','#f59e0b');
+  }
+  await delay(400);
+
+  // Step 3: Risk
+  setPipeline(3, 3);
+  const risk = result.risk;
+  if (risk) {
+    updateRiskUI(risk);
+    feedLine('🛡','RiskAgent',
+      `Score ${risk.score}/100 (${risk.level}) — ${risk.approved?'✅ APPROVED':'❌ BLOCKED'}${risk.flags?.length?' · Flags: '+risk.flags.slice(0,2).join('; '):''}`,
+      '#f97316');
+  }
+  await delay(400);
+
+  // Step 4: Execution
+  setPipeline(4, 4);
+  const executed = result.executed || [];
+  if (executed.length) {
+    executed.forEach(t => {
+      feedLine('⚡','ExecutionAgent',
+        `${t.status.toUpperCase()} · ${t.message} · tx: ${(t.tx_hash||'').slice(0,18)}...`,
+        '#10b981');
+    });
+  } else {
+    feedLine('⚡','ExecutionAgent',
+      autonomous ? 'No approved trades to execute' : 'Manual mode – no auto-execution',
+      '#10b981');
+  }
+  await delay(300);
+
+  // Step 5: Explainer
+  setPipeline(5, 5);
+  feedLine('💬','ExplainerAgent',
+    autonomous && executed.length
+      ? `Autonomous cycle complete. ${executed.length} trade(s) executed. Portfolio updated.`
+      : 'Analysis cycle complete. Review signals above before manual execution.',
+    '#6366f1');
+
+  // Mark all done
+  setTimeout(() => setPipeline(-1, 6), 200);
+}
+
+// ── Status bar ────────────────────────────────────────────────────────────
+function showStatusBar(result) {
+  const bar  = document.getElementById('statusBar');
+  const exec = result.executed?.length || 0;
+  bar.textContent = `✓ Cycle complete · ${new Date().toLocaleTimeString()} · Mode: ${autonomous?'Autonomous':'Manual'} · ${exec ? exec + ' trade(s) executed' : 'No trades executed'}`;
+  bar.style.display = 'block';
+  setTimeout(() => bar.style.display = 'none', 8000);
+}
+
+// ── Backtest simulator ────────────────────────────────────────────────────
+let equityChartInst = null;
+async function runSim() {
+  const btn = document.getElementById('simBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Running...';
+
+  const body = {
+    strategy:        document.getElementById('simStrategy').value,
+    symbol:          document.getElementById('simSymbol').value,
+    period_days:     +document.getElementById('simDays').value,
+    initial_capital: +document.getElementById('simCapital').value,
+  };
+
+  let result = null;
+  try {
+    const r = await fetch(`${API}/simulate`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+    });
+    if (r.ok) result = await r.json();
+  } catch(e) {}
+
+  if (!result) result = buildMockSimResult(body);
+
+  // Equity chart
+  document.getElementById('simChartWrap').style.display = 'block';
+  const ctx = document.getElementById('equityChart').getContext('2d');
+  if (equityChartInst) equityChartInst.destroy();
+  const labels = result.equity_curve.map(e => e.date);
+  const vals   = result.equity_curve.map(e => e.value);
+  equityChartInst = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: vals, borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,.12)',
+        fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: {display:false}, tooltip:{
+        callbacks:{ label: ctx => `$${ctx.raw.toLocaleString()}` }
+      }},
+      scales: {
+        x: { display:false },
+        y: { display:true, ticks:{color:'#475569',font:{size:10}}, grid:{color:'rgba(255,255,255,.04)'} }
+      }
+    }
+  });
+
+  // Metrics
+  document.getElementById('simMetrics').style.display = 'grid';
+  const roiColor = result.roi_pct > 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('mROI').textContent    = (result.roi_pct>0?'+':'')+result.roi_pct?.toFixed(2)+'%';
+  document.getElementById('mROI').style.color    = roiColor;
+  document.getElementById('mDraw').textContent   = result.max_drawdown?.toFixed(2)+'%';
+  document.getElementById('mDraw').style.color   = 'var(--yellow)';
+  document.getElementById('mWin').textContent    = result.win_rate?.toFixed(1)+'%';
+  document.getElementById('mWin').style.color    = 'var(--cyan)';
+  document.getElementById('mSharpe').textContent = result.sharpe_ratio?.toFixed(2);
+  document.getElementById('mSharpe').style.color = 'var(--brand2)';
+  document.getElementById('mTrades').textContent = result.total_trades;
+  document.getElementById('mMode').textContent   = body.strategy;
+
+  const explainEl = document.getElementById('simExplain');
+  explainEl.style.display = 'block';
+  explainEl.textContent   = result.explanation || '';
+
+  btn.disabled = false;
+  btn.textContent = '🔬 Run Backtest';
+}
+
+// ── PayFi ─────────────────────────────────────────────────────────────────
+function togglePayForm() {
+  const f = document.getElementById('payForm');
+  f.style.display = f.style.display === 'none' ? 'flex' : 'none';
+}
+
+async function schedulePayment() {
+  const recipient = document.getElementById('payRecipient').value.trim();
+  if (!recipient) { alert('Enter a recipient address'); return; }
+
+  const body = {
+    wallet:    WALLET,
+    recipient,
+    amount:    +document.getElementById('payAmount').value,
+    token:     document.getElementById('payToken').value,
+    schedule:  document.getElementById('paySchedule').value,
+  };
+
+  let result = null;
+  try {
+    const r = await fetch(`${API}/payments`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+    });
+    if (r.ok) result = await r.json();
+  } catch(e) {}
+
+  payments.push({ id: payments.length+1, ...body, status:'active', next_execution: result?.next_execution || 'pending' });
+  renderPayments();
+  document.getElementById('payForm').style.display = 'none';
+  document.getElementById('payRecipient').value = '';
+}
+
+function renderPayments() {
+  const list = document.getElementById('paymentList');
+  if (!payments.length) {
+    list.innerHTML = '<div style="color:var(--dim);text-align:center;padding:20px;font-size:12px">No scheduled payments. Click + Add to create one.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  payments.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'pay-item';
+    const next = p.next_execution ? new Date(p.next_execution).toLocaleDateString() : 'soon';
+    div.innerHTML = `
+      <span class="pay-icon">🕐</span>
+      <div style="flex:1;min-width:0">
+        <div class="pay-addr trunc">→ ${p.recipient.slice(0,20)}...</div>
+        <div class="pay-meta">${p.amount} ${p.token} · ${p.schedule} · Next: ${next}</div>
+      </div>
+      <span class="pay-status badge badge-yellow">${p.status}</span>
+    `;
+    list.appendChild(div);
+  });
+}
+
+// ── Deposit ───────────────────────────────────────────────────────────────
+async function doDeposit() {
+  const amount = +document.getElementById('depositAmt').value;
+  if (!amount || amount <= 0) return;
+  try {
+    await fetch(`${API}/portfolio/${WALLET}/deposit?amount=${amount}`, { method:'POST' });
+  } catch(e) {}
+  await fetchPortfolio();
+  feedLine('💰','System', `Deposited $${amount.toLocaleString()} USDT into vault`, 'var(--green)');
+}
+
+// ── Toggle autonomous ─────────────────────────────────────────────────────
+function toggleAutonomous() {
+  autonomous = !autonomous;
+  const tog = document.getElementById('autoToggle');
+  const lbl = document.getElementById('autoLabel');
+  tog.className = 'toggle' + (autonomous ? ' on' : '');
+  lbl.className = 'toggle-label' + (autonomous ? ' on' : '');
+  lbl.textContent = autonomous ? '⚡ Autonomous ON' : 'Manual Mode';
+}
+
+// ── ZK verify ─────────────────────────────────────────────────────────────
+async function verifyZK() {
+  let badge = null;
+  try {
+    const r = await fetch(`${API}/zk/verify/${WALLET}`);
+    if (r.ok) badge = await r.json();
+  } catch(e) {}
+  if (!badge) {
+    badge = {
+      verified: true, scheme: 'ZK-SNARK (mock)',
+      proof_hash: '0x' + 'a1b2c3d4e5f6'.repeat(4),
+      claims: ['wallet_ownership_verified','not_sanctioned','kyc_level_1']
+    };
+  }
+  const el     = document.getElementById('zkBadge');
+  const proof  = document.getElementById('zkProof');
+  const claims = document.getElementById('zkClaims');
+  el.style.display = 'block';
+  proof.textContent = badge.proof_hash;
+  claims.innerHTML  = (badge.claims||[]).map(c => `<span class="zk-claim">${c}</span>`).join('');
+}
+
+// ── Mock data (offline fallback) ──────────────────────────────────────────
+function buildMockResult() {
+  return {
+    wallet: WALLET,
+    market_data: [
+      {symbol:'BTCUSDT', price:67500, change_24h:-2.3, rsi:43.2, sentiment:'neutral', trend:'down'},
+      {symbol:'ETHUSDT', price:3480,  change_24h:1.1,  rsi:52.0, sentiment:'neutral', trend:'up'},
+      {symbol:'SOLUSDT', price:172,   change_24h:3.2,  rsi:59.0, sentiment:'bullish', trend:'up'},
+      {symbol:'BNBUSDT', price:577,   change_24h:-1.5, rsi:44.5, sentiment:'neutral', trend:'down'},
+    ],
+    signals: [
+      {symbol:'BTCUSDT', action:'buy', confidence:0.64, rationale:'Oversold: RSI=43.2, sentiment=neutral', position_size:5, target_price:70000, stop_loss:65000},
+      {symbol:'BNBUSDT', action:'buy', confidence:0.57, rationale:'Oversold: RSI=44.5, sentiment=neutral', position_size:4, target_price:610, stop_loss:560},
+    ],
+    risk: { score:15, level:'low', approved:true, flags:['Low confidence signal: 0.57'], adjusted_size:5 },
+    simulation: {
+      roi_pct:7.24, max_drawdown:4.12, win_rate:62.5, sharpe_ratio:1.43, total_trades:8,
+      equity_curve: buildMockEquity(10000, 30)
+    },
+    executed: autonomous ? [{
+      id:1001, status:'simulated',
+      tx_hash:'0x' + Math.random().toString(16).slice(2).padEnd(40,'0'),
+      price:67612, amount:0.0074,
+      message:'[SIMULATED] BUY 0.0074 BTCUSDT @ $67,612.00'
+    }] : [],
+    decisions: [
+      {agent:'MarketIntelligenceAgent', decision_type:'market_scan', explanation:'Scanned 4 symbols. BTC oversold, SOL bullish.'},
+      {agent:'StrategyAgent', decision_type:'signals_generated', explanation:'2 BUY signals: BTCUSDT (64%), BNBUSDT (57%)'},
+      {agent:'SimulationAgent', decision_type:'simulation_complete', explanation:'Momentum backtest 30d: ROI +7.24%, drawdown 4.12%'},
+      {agent:'RiskAgent', decision_type:'risk_assessment', explanation:'Score 15/100 (low) – APPROVED. Minor: low confidence flag.'},
+      {agent:'ExecutionAgent', decision_type:'trade_executed', explanation: autonomous ? 'Simulated: BUY 0.0074 BTCUSDT @ $67,612' : 'Manual mode – no execution'},
+      {agent:'ExplainerAgent', decision_type:'explanations_generated', explanation:'Cycle complete. 5 decisions logged.'},
+    ]
+  };
+}
+
+function buildMockSimResult(body) {
+  const curve = buildMockEquity(body.initial_capital || 10000, body.period_days || 30);
+  const final = curve[curve.length-1]?.value || body.initial_capital;
+  const roi   = (final - body.initial_capital) / body.initial_capital * 100;
+  return {
+    strategy:      body.strategy,
+    roi_pct:       parseFloat(roi.toFixed(2)),
+    max_drawdown:  parseFloat((Math.random()*8+2).toFixed(2)),
+    win_rate:      parseFloat((Math.random()*30+45).toFixed(1)),
+    sharpe_ratio:  parseFloat((Math.random()*1.5+0.2).toFixed(2)),
+    total_trades:  Math.floor(Math.random()*12+4),
+    equity_curve:  curve,
+    explanation:   `The ${body.strategy} strategy on ${body.symbol} over ${body.period_days} days returned ${roi.toFixed(1)}%. Strategy performed ${roi>5?'above':'below'} benchmark expectations.`
+  };
+}
+
+function buildMockEquity(initial, days) {
+  const result = [];
+  let val = initial;
+  const today = new Date();
+  for (let i = days; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    val = val * (1 + (Math.random()-0.45)*0.025);
+    result.push({ date: d.toISOString().slice(0,10), value: Math.round(val*100)/100 });
+  }
+  return result;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+fetchPortfolio();
+fetchMarket();
+// Refresh market every 30s
+setInterval(fetchMarket, 30000);
+// Load existing payments
+fetch(`${API}/payments/${WALLET}`)
+  .then(r => r.ok ? r.json() : [])
+  .then(data => { data.forEach(p => payments.push(p)); renderPayments(); })
+  .catch(() => {});
+</script>
+</body>
+</html>
