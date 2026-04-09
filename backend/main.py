@@ -349,6 +349,18 @@ async def get_decisions(wallet: str, limit: int = 50, db: Session = Depends(get_
             for l in logs]
 
 
+# ─── Contracts ───────────────────────────────────────────────────────────────
+@app.get("/contracts", tags=["System"])
+async def get_contracts():
+    """
+    Returns deployed smart contract addresses and chain status.
+    In simulation mode: shows addresses from env vars or deployments JSON.
+    In live mode: also verifies RPC connectivity.
+    """
+    from backend.chain import chain_status
+    return chain_status()
+
+
 # ─── ZK Identity ──────────────────────────────────────────────────────────────
 @app.get("/zk/verify/{wallet}", tags=["Identity"])
 async def zk_verify(wallet: str):
