@@ -13,10 +13,6 @@ openai==1.30.0                # for OpenAI-compatible (Qwen, Mixtral via Togethe
 # Blockchain
 web3==6.19.0                  # optional: only needed for live on-chain execution
 
-# Data
-pandas==2.2.2                 # optional: for advanced backtesting
-numpy==1.26.4                 # optional: for statistical calculations
-
 # Dev
 pytest==8.2.0
 pytest-asyncio==0.23.7
