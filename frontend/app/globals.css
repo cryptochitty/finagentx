@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0f172a;
+  --card: #1e293b;
+  --border: #334155;
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+  --brand: #6366f1;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Custom card */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+/* Risk badge colors */
+.risk-low     { @apply text-green-400 bg-green-400/10; }
+.risk-medium  { @apply text-yellow-400 bg-yellow-400/10; }
+.risk-high    { @apply text-orange-400 bg-orange-400/10; }
+.risk-extreme { @apply text-red-400 bg-red-400/10; }
+
+/* Agent feed */
+.agent-line {
+  @apply flex gap-2 items-start text-sm py-1.5 border-b border-surface-border/50 animate-fade-in;
+}
+
+/* Shimmer loading skeleton */
+.shimmer {
+  background: linear-gradient(90deg, var(--card) 25%, #2a3a50 50%, var(--card) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
