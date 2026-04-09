@@ -4,7 +4,7 @@ frontend/
 scripts/
 *.py
 *.sol
-requirements.txt
 Procfile
 render.yaml
 docker-compose.yml
+requirements.txt
