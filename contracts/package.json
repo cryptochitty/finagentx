@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "compile": "hardhat compile",
-    "deploy:local":   "hardhat run deploy.js --network localhost",
-    "deploy:testnet": "hardhat run deploy.js --network hashkey_testnet",
-    "deploy:mainnet": "hardhat run deploy.js --network hashkey",
-    "node": "hardhat node",
-    "test": "hardhat test"
+    "compile":          "hardhat compile",
+    "deploy:local":     "hardhat run deploy.js --network localhost",
+    "deploy:testnet":   "hardhat run deploy.js --network hashkey_testnet",
+    "deploy:mainnet":   "hardhat run deploy.js --network hashkey",
+    "node":             "hardhat node",
+    "test":             "hardhat test"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
